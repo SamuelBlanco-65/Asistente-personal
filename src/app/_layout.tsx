@@ -1,18 +1,34 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
+import React, { useEffect } from 'react';
+import { Stack, useRouter, useSegments } from 'expo-router';
+import { useAuthStore } from '../state/authStore';
+import { colors } from '../theme';
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
+export default function RootLayout() {
+  const { status } = useAuthStore();
+  const segments = useSegments();
+  const router = useRouter();
 
-SplashScreen.preventAutoHideAsync();
+  useEffect(() => {
+    const isLockScreen = segments[0] === 'lock';
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+    if (status === 'AUTHENTICATED' && isLockScreen) {
+      // Smooth transition to tabs upon biometric authentication
+      router.replace('/(tabs)');
+    } else if (status !== 'AUTHENTICATED' && !isLockScreen) {
+      // Lock gate: redirect to lock screen if unauthenticated
+      router.replace('/lock');
+    }
+  }, [status, segments]);
+
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <AppTabs />
-    </ThemeProvider>
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: colors.background.darkest },
+      }}
+    >
+      <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="lock" />
+    </Stack>
   );
 }
