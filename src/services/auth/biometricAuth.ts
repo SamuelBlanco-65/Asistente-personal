@@ -62,20 +62,38 @@ export class BiometricAuthService {
       }
 
       // Safe clean cross-platform options compatible with Android BiometricPrompt
+      console.log('[BiometricAuthService] Launching biometric prompt...');
+      let timerId: any = null;
+
       const authPromise = LocalAuthModule.authenticateAsync({
         promptMessage: promptReason,
         cancelLabel: 'Cancelar',
         disableDeviceFallback: false,
+        requireConfirmation: false,
+        biometricsSecurityLevel: 'strong',
       });
 
-      // Timeout safety net (20 seconds max to prevent promise deadlock on Android)
-      const timeoutPromise = new Promise<any>((resolve) => {
-        setTimeout(() => {
+      // Timeout safety net (10 seconds max to prevent promise deadlock on Android)
+      const timeoutPromise = new Promise<{ success: boolean; error?: string }>((resolve) => {
+        timerId = setTimeout(async () => {
+          console.warn('[BiometricAuthService] Auth timeout exceeded. Canceling prompt.');
+          try {
+            if (LocalAuthModule?.cancelAuthenticate) {
+              await LocalAuthModule.cancelAuthenticate();
+            }
+          } catch (cancelErr) {
+            console.error('[BiometricAuthService] Error canceling authenticate:', cancelErr);
+          }
           resolve({ success: false, error: 'La respuesta biométrica tardó demasiado. Intenta nuevamente.' });
-        }, 20000);
+        }, 10000);
       });
 
       const result = await Promise.race([authPromise, timeoutPromise]);
+      if (timerId) {
+        clearTimeout(timerId);
+      }
+
+      console.log('[BiometricAuthService] Auth result:', JSON.stringify(result));
 
       if (result && result.success) {
         return { success: true };
@@ -91,6 +109,16 @@ export class BiometricAuthService {
         success: false,
         error: error?.message || 'Error inesperado durante la autenticación.',
       };
+    }
+  }
+
+  static async cancelAuthentication(): Promise<void> {
+    try {
+      if (LocalAuthModule?.cancelAuthenticate) {
+        await LocalAuthModule.cancelAuthenticate();
+      }
+    } catch (e) {
+      console.warn('[BiometricAuthService] Error during manual cancel:', e);
     }
   }
 }

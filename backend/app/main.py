@@ -14,10 +14,10 @@ async def lifespan(app: FastAPI):
     # Startup tasks
     init_db()
     register_academic_tools()
-    print(f"🚀 {settings.app_name} iniciado correctamente en {settings.backend_host}:{settings.backend_port}")
+    print(f" {settings.app_name} iniciado correctamente en {settings.backend_host}:{settings.backend_port}")
     yield
     # Shutdown tasks
-    print(f"🛑 {settings.app_name} detenido.")
+    print(f" {settings.app_name} detenido.")
 
 app = FastAPI(
     title=settings.app_name,

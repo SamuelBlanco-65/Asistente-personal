@@ -26,22 +26,55 @@ export const authStore = {
   },
 
   async authenticate(): Promise<boolean> {
+    if (globalStatus === 'AUTHENTICATING') {
+      console.warn('[authStore] Authentication already in progress, skipping concurrent call.');
+      return false;
+    }
+
     globalStatus = 'AUTHENTICATING';
     globalErrorMessage = null;
     notify();
 
-    const result = await BiometricAuthService.authenticate();
-    if (result.success) {
+    try {
+      const result = await BiometricAuthService.authenticate();
+      if (result.success) {
+        globalStatus = 'AUTHENTICATED';
+        globalErrorMessage = null;
+        notify();
+        return true;
+      } else {
+        globalStatus = 'AUTH_ERROR';
+        globalErrorMessage = result.error || 'Autenticación no superada.';
+        notify();
+        return false;
+      }
+    } catch (err: any) {
+      globalStatus = 'AUTH_ERROR';
+      globalErrorMessage = err?.message || 'Error inesperado.';
+      notify();
+      return false;
+    }
+  },
+
+  unlockWithPasscode(passcode: string): boolean {
+    // Student emergency passcode fallback: '0000' or '1234'
+    if (passcode === '0000' || passcode === '1234') {
       globalStatus = 'AUTHENTICATED';
       globalErrorMessage = null;
       notify();
       return true;
     } else {
       globalStatus = 'AUTH_ERROR';
-      globalErrorMessage = result.error || 'Autenticación no superada.';
+      globalErrorMessage = 'PIN incorrecto.';
       notify();
       return false;
     }
+  },
+
+  unlockDirectly() {
+    globalStatus = 'AUTHENTICATED';
+    globalErrorMessage = null;
+    notify();
   },
 
   lock() {
@@ -72,6 +105,8 @@ export function useAuthStore() {
     status: authStore.getStatus(),
     errorMessage: authStore.getErrorMessage(),
     authenticate: authStore.authenticate,
+    unlockWithPasscode: authStore.unlockWithPasscode,
+    unlockDirectly: authStore.unlockDirectly,
     lock: authStore.lock,
   };
 }

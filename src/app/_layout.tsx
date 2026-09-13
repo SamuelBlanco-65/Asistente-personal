@@ -12,10 +12,12 @@ export default function RootLayout() {
     const isLockScreen = segments[0] === 'lock';
 
     if (status === 'AUTHENTICATED' && isLockScreen) {
-      // Smooth transition to tabs upon biometric authentication
-      router.replace('/(tabs)');
+      // Smooth transition to assistant tabs upon biometric authentication
+      console.log('[_layout] Authenticated successfully, redirecting to /');
+      router.replace('/');
     } else if (status !== 'AUTHENTICATED' && !isLockScreen) {
       // Lock gate: redirect to lock screen if unauthenticated
+      console.log('[_layout] Unauthenticated access detected, redirecting to /lock');
       router.replace('/lock');
     }
   }, [status, segments]);

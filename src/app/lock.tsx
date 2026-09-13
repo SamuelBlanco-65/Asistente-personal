@@ -1,25 +1,45 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, TextInput } from 'react-native';
+import { useRouter } from 'expo-router';
 import { ScreenContainer } from '../components/ui/ScreenContainer';
 import { Button } from '../components/ui/Button';
 import { JarvisOrb } from '../components/assistant/JarvisOrb';
 import { useAuthStore } from '../state/authStore';
-import { colors, typography, spacing } from '../theme';
+import { colors, typography, spacing, radii } from '../theme';
 
 export default function LockScreen() {
-  const { status, errorMessage, authenticate } = useAuthStore();
+  const { status, errorMessage, authenticate, unlockWithPasscode } = useAuthStore();
+  const [showPinInput, setShowPinInput] = useState(false);
+  const [pin, setPin] = useState('');
   const hasAttemptedRef = useRef(false);
+  const router = useRouter();
 
   useEffect(() => {
-    // Attempt biometric unlock on initial screen launch
-    if (status === 'LOCKED' && !hasAttemptedRef.current) {
-      hasAttemptedRef.current = true;
-      authenticate();
-    }
+    // Delay prompt slightly to let screen transition and Android window focus stabilize
+    const timer = setTimeout(async () => {
+      if (status === 'LOCKED' && !hasAttemptedRef.current) {
+        hasAttemptedRef.current = true;
+        const success = await authenticate();
+        if (success) {
+          router.replace('/');
+        }
+      }
+    }, 350);
+
+    return () => clearTimeout(timer);
   }, []);
 
-  const handleManualUnlock = () => {
-    authenticate();
+  const handleManualUnlock = async () => {
+    const success = await authenticate();
+    if (success) {
+      router.replace('/');
+    }
+  };
+
+  const handlePinUnlock = () => {
+    if (unlockWithPasscode(pin)) {
+      router.replace('/');
+    }
   };
 
   return (
@@ -40,8 +60,38 @@ export default function LockScreen() {
           title={status === 'AUTHENTICATING' ? 'Autenticando...' : '🔓 Autenticar con Huella / Rostro'}
           onPress={handleManualUnlock}
           loading={status === 'AUTHENTICATING'}
+          disabled={status === 'AUTHENTICATING'}
           style={styles.unlockButton}
         />
+
+        {showPinInput ? (
+          <View style={styles.pinContainer}>
+            <TextInput
+              style={styles.pinInput}
+              placeholder="PIN de Respaldo (ej: 1234)"
+              placeholderTextColor={colors.text.muted}
+              secureTextEntry
+              keyboardType="numeric"
+              value={pin}
+              onChangeText={setPin}
+              onSubmitEditing={handlePinUnlock}
+            />
+            <Button
+              title="Confirmar PIN"
+              onPress={handlePinUnlock}
+              variant="secondary"
+              style={styles.confirmPinButton}
+            />
+          </View>
+        ) : (
+          <Button
+            title="Usar PIN de respaldo (1234)"
+            onPress={() => setShowPinInput(true)}
+            variant="ghost"
+            style={styles.fallbackButton}
+            textStyle={styles.fallbackText}
+          />
+        )}
       </View>
     </ScreenContainer>
   );
@@ -86,5 +136,32 @@ const styles = StyleSheet.create({
     color: colors.status.error,
     fontSize: typography.fontSize.sm,
     textAlign: 'center',
+  },
+  pinContainer: {
+    width: '100%',
+    marginTop: spacing.lg,
+  },
+  pinInput: {
+    backgroundColor: colors.background.card,
+    borderRadius: radii.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    color: colors.text.primary,
+    borderWidth: 1,
+    borderColor: colors.background.cardBorder,
+    textAlign: 'center',
+    fontSize: typography.fontSize.lg,
+    letterSpacing: 4,
+    marginBottom: spacing.sm,
+  },
+  confirmPinButton: {
+    width: '100%',
+  },
+  fallbackButton: {
+    marginTop: spacing.md,
+  },
+  fallbackText: {
+    fontSize: typography.fontSize.xs,
+    color: colors.text.muted,
   },
 });
