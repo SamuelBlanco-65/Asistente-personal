@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, TextInput } from 'react-native';
-import { useRouter } from 'expo-router';
 import { ScreenContainer } from '../components/ui/ScreenContainer';
 import { Button } from '../components/ui/Button';
 import { JarvisOrb } from '../components/assistant/JarvisOrb';
@@ -12,34 +11,25 @@ export default function LockScreen() {
   const [showPinInput, setShowPinInput] = useState(false);
   const [pin, setPin] = useState('');
   const hasAttemptedRef = useRef(false);
-  const router = useRouter();
 
   useEffect(() => {
     // Delay prompt slightly to let screen transition and Android window focus stabilize
     const timer = setTimeout(async () => {
       if (status === 'LOCKED' && !hasAttemptedRef.current) {
         hasAttemptedRef.current = true;
-        const success = await authenticate();
-        if (success) {
-          router.replace('/');
-        }
+        await authenticate();
       }
-    }, 350);
+    }, 400);
 
     return () => clearTimeout(timer);
   }, []);
 
-  const handleManualUnlock = async () => {
-    const success = await authenticate();
-    if (success) {
-      router.replace('/');
-    }
+  const handleManualUnlock = () => {
+    authenticate();
   };
 
   const handlePinUnlock = () => {
-    if (unlockWithPasscode(pin)) {
-      router.replace('/');
-    }
+    unlockWithPasscode(pin);
   };
 
   return (

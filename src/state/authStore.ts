@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useSyncExternalStore } from 'react';
 import { BiometricAuthService, AuthStatus } from '../services/auth/biometricAuth';
 
 export interface AuthState {
@@ -13,6 +13,7 @@ let globalErrorMessage: string | null = null;
 const listeners = new Set<() => void>();
 
 function notify() {
+  console.log(`[authStore] State changed -> status: ${globalStatus}`);
   listeners.forEach((listener) => listener());
 }
 
@@ -90,20 +91,18 @@ export const authStore = {
 };
 
 export function useAuthStore() {
-  const [, setTick] = useState(0);
-
-  useEffect(() => {
-    const unsubscribe = authStore.subscribe(() => {
-      setTick((t) => t + 1);
-    });
-    return () => {
-      unsubscribe();
-    };
-  }, []);
+  const status = useSyncExternalStore(
+    authStore.subscribe,
+    authStore.getStatus
+  );
+  const errorMessage = useSyncExternalStore(
+    authStore.subscribe,
+    authStore.getErrorMessage
+  );
 
   return {
-    status: authStore.getStatus(),
-    errorMessage: authStore.getErrorMessage(),
+    status,
+    errorMessage,
     authenticate: authStore.authenticate,
     unlockWithPasscode: authStore.unlockWithPasscode,
     unlockDirectly: authStore.unlockDirectly,
